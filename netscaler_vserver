@@ -1,0 +1,45 @@
+#!/usr/bin/python
+
+# OIDs used:
+# NS-ROOT-MIB::vsvrName     .1.3.6.1.4.1.5951.4.1.3.1.1.1
+# NS-ROOT-MIB::vsvrState    .1.3.6.1.4.1.5951.4.1.3.1.1.5
+# SNMPv2-MIB::sysDescr      .1.3.6.1.2.1.1.1.0
+
+# Scan function looks for 'NetScaler' in sysDescr
+
+# Author: Mike Julian - mike@mikejulian.com - http://mikejulian.com
+
+def inventory_netscaler_vserver(info):
+    inventory = []
+    for line in info:
+        if int(line[1]) != 4: # Status code '4' is 'outOfService'
+            inventory.append((line[0], None))
+    return inventory
+
+def check_netscaler_vserver(item, _no_params, info):
+    for line in info:
+        if line[0] == item:
+            status = int(line[1])
+            if status == 1:
+                return (2, "CRIT - vServer down")
+            elif status == 2:
+                return (2, "CRIT - Status unknown")
+            elif status == 3:
+                return (1, "WARN - vServer busy")
+            elif status == 5:
+                return (1, "WARN - vServer transitioning to Out of Service")
+            elif status == 7:
+                return (0, "OK - Virtual Server is up and available")
+            elif status == 8:
+                return (1, "WARN - vServer transitioning to Out of Service - vServer down")
+            else:
+                return (3, "UNKNOWN")
+    return (3, "UNKNOWN - Virtual Server %s not found in SNMP output" % item)
+
+check_info["netscaler_vserver"] = {
+    "check_function"        : check_netscaler_vserver,
+    "inventory_function"    : inventory_netscaler_vserver,
+    "service_description"   : "vServer: %s",
+    "has_perfdata"          : False,
+    "snmp_scan_function"    : lambda oid: "NetScaler" in oid(".1.3.6.1.2.1.1.1.0"),
+    "snmp_info"             : ( ".1.3.6.1.4.1.5951.4.1.3.1.1", [ 1, 5 ] )}

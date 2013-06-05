@@ -1,0 +1,51 @@
+#!/usr/bin/python
+
+# OIDs used:
+# ENTITY-MIB::entPhysicalName                            .1.3.6.1.2.1.47.1.1.1.1.7
+# CISCO-ENTITY-FRU-CONTROL-MIB::cefcFanTrayOperStatus    .1.3.6.1.4.1.9.9.117.1.4.1.1.1
+# SNMPv2-MIB::sysDescr                                   .1.3.6.1.2.1.1.1.0
+
+# Scan function looks for 'Cisco NX-OS' in sysDescr
+
+# Author: Mike Julian - mike@mikejulian.com - http://mikejulian.com
+
+def parse_cisco_nexus_fan(info):
+    description_info, state_info = info
+
+    # Create dict of descriptions
+    descriptions = dict(description_info)
+
+    # Create list only of fans
+    fan = []
+    for id, fanstate in state_info:
+        fan.append( ( id, descriptions.get(id), fanstate ) )
+    return fan
+
+def inventory_cisco_nexus_fan(info):
+    fans = parse_cisco_nexus_fan(info)
+    return [ (entry[1], None) for entry in fans ]
+
+
+def check_cisco_nexus_fan(item, _no_params, info):
+    fans = parse_cisco_nexus_fan(info)
+    for id, name, state in fans:
+        state = int(state)
+        if item == name:
+            if state == 1:
+                return (2, "CRIT - Fan status Unknown")
+            elif state == 2:
+                return (0, "OK - Fan OK")
+            elif state == 3:
+                return (2, "CRIT - Fan not operational")
+            elif state == 4:
+                return (1, "WARN - Fan partial failure, replace ASAP")
+    return (3, "Check problem - UNKNOWN")
+
+check_info["cisco_nexus_fan"] = {
+    "check_function"        : check_cisco_nexus_fan,
+    "inventory_function"    : inventory_cisco_nexus_fan,
+    "service_description"   : "%s",
+    "has_perfdata"          : False,
+    "snmp_scan_function"    : lambda oid: "Cisco NX-OS" in oid(".1.3.6.1.2.1.1.1.0"),
+    "snmp_info"             : [( ".1.3.6.1.2.1.47.1.1.1.1", [OID_END, 7]), (".1.3.6.1.4.1.9.9.117.1.4.1.1", [OID_END, 1])],
+}

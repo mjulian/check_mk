@@ -1,0 +1,49 @@
+#!/usr/bin/python
+
+# OIDs used:
+# PIM-MIB::pimInterfaceAddress    .1.3.6.1.3.61.1.1.2.1.2
+# PIM-MIB::pimNeighborIfIndex     .1.3.6.1.3.61.1.1.3.1.2
+# PIM-MIB::pimNeighborUpTime      .1.3.6.1.3.61.1.1.3.1.3
+# PIM-MIB::pimComponentStatus.1   .1.3.6.1.3.61.1.1.12.1.5.1
+
+# pimInterfaceAddress includes all interfaces that have PIM set up on them.
+# pimNeighbor shows all PIM neighbors.
+# If an entry is found in pimInterfaceAddress but not in pimNeighbor, then
+# we call it critical.
+
+# Scan function looks value '1' in pimComponentStatus.
+# If PIM is not enabled on the device, this will return a value of '0'.
+
+# Author: Mike Julian - mike@mikejulian.com - http://mikejulian.com
+
+def parse_pim(info):
+    description_info, state_info = info
+    descriptions = dict(description_info)
+    states = dict(state_info)
+
+    # Ignore 0.0.0.0 as it's not a real PIM interface
+    return [(entry[1], states.get(entry[0])) for entry in description_info if not "0.0.0.0" in entry[1]]
+
+def inventory_pim(info):
+    pimNeighbors = parse_pim(info)
+    return [ (entry[0], None) for entry in pimNeighbors ]
+
+
+def check_pim(item, _no_params, info):
+    pimNeighbors = parse_pim(info)
+    for ip, uptime in pimNeighbors:
+        if item == ip:
+            if uptime == None: # if uptime is empty, then we have a missing neighbor, and should alert
+                return (2, "CRIT: PIM neighbor down or not configured")
+            else:
+                return (0, "OK: PIM neighbor up")
+    return (3, "Check problem - UNKNOWN")
+
+check_info["pim"] = {
+    "check_function"        : check_pim,
+    "inventory_function"    : inventory_pim,
+    "service_description"   : "PIM Neighbor: %s",
+    "has_perfdata"          : False,
+    "snmp_scan_function"    : lambda oid: oid(".1.3.6.1.3.61.1.1.12.1.5.1") == "1",
+    "snmp_info"             : [( ".1.3.6.1.3.61.1.1.2.1", [OID_END, 2]), (".1.3.6.1.3.61.1.1.3.1", [2, 3])],
+}

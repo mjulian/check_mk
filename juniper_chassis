@@ -1,0 +1,47 @@
+#!/usr/bin/python
+
+# OIDs used:
+# JUNIPER-MIB::jnxOperatingDescr    .1.3.6.1.4.1.2636.3.1.13.1.5
+# JUNIPER-MIB::jnxOperatingState    .1.3.6.1.4.1.2636.3.1.13.1.6
+# JUNIPER-MIB::jnxBoxDescr          .1.3.6.1.4.1.2636.3.1.2.0
+
+# Scan function looks for 'Juniper' in jnxBoxDescr
+
+# Author: Mike Julian - mike@mikejulian.com - http://mikejulian.com
+
+def inventory_juniper_chassis(info):
+    inventory = []
+    for line in info:
+        inventory.append((line[0], None))
+    return inventory
+
+def check_juniper_chassis(item, _no_params, info):
+    for descr, state in info:
+        if item == descr:
+            status = int(state)
+            if status == 1:
+                return (1, "CRIT - Status: unknown")
+            elif status == 2:
+                return (0, "OK - Status: Running (active)")
+            elif status == 3:
+                return (0, "OK - Status: Ready (not active)")
+            elif status == 4:
+                return (2, "WARN - Status: Held in reset")
+            elif status == 5:
+                return (0, "WARN - Status: Running at full speed (fans only)")
+            elif status == 6:
+                return (1, "CRIT - Status: Down/Offline (PSUs only)")
+            elif status == 7:
+                return (0, "OK - Status: Standby")
+            else:
+                return (3, "UNKNOWN")
+    return (3, "UNKNOWN")
+
+check_info["juniper_chassis"] = {
+    "check_function"        : check_juniper_chassis,
+    "inventory_function"    : inventory_juniper_chassis,
+    "service_description"   : "Chassis: %s",
+    "has_perfdata"          : False,
+    "snmp_scan_function"    : lambda oid: "Juniper" in oid(".1.3.6.1.4.1.2636.3.1.2.0"),
+    "snmp_info"             : ( ".1.3.6.1.4.1.2636.3.1.13.1", [5, 6]),
+}

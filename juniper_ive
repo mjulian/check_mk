@@ -1,0 +1,83 @@
+#!/usr/bin/python
+
+# OIDs used:
+# JUNIPER-IVE-MIB::productName.0    .1.3.6.1.4.1.12532.6.0
+# JUNIPER-IVE-MIB::iveCpuUtil       .1.3.6.1.4.1.12532.10
+# JUNIPER-IVE-MIB::iveMemoryUtil    .1.3.6.1.4.1.12532.11
+# JUNIPER-IVE-MIB::diskFullPercent  .1.3.6.1.4.1.12532.25
+# JUNIPER-IVE-MIB::logFullPercent   .1.3.6.1.4.1.12532.1
+
+# Scan function looks for 'SA-2000' in productName.0
+
+# Author: Mike Julian - mike@mikejulian.com - http://mikejulian.com
+
+juniper_ive_default_levels = (80.0, 90.0)
+
+def inventory_juniper_ive(info):
+    return [ (None, juniper_ive_default_levels) ]
+
+def check_juniper_ive(item, params, info):
+    warn,crit = params
+    cpuUtil = float(info[0][0])
+    memUtil = float(info[0][1])
+    diskUtil = float(info[0][2])
+    logUtil = float(info[0][3])
+
+    states = []
+    cpuInfo = "CPU: %2.1f%%" % cpuUtil
+    if cpuUtil >= crit:
+        cpuInfo += "(!!)"
+        state = 2
+    elif cpuUtil >= warn:
+        cpuInfo += "(!)"
+        state = 1
+    else:
+        state = 0
+    states.append((state,cpuInfo,("CPU (percentage)", cpuUtil, warn, crit, 0, 100)))
+
+    memInfo = "Mem: %2.1f%%" % memUtil
+    if memUtil >= crit:
+        memInfo += "(!!)"
+        state = 2
+    elif memUtil >= warn:
+        memInfo += "(!)"
+        state = 1
+    else:
+        state = 0
+    states.append((state,memInfo,("Memory (percentage)", memUtil, warn, crit, 0, 100)))
+
+    diskInfo = "Disk: %2.1f%%" % diskUtil
+    if diskUtil >= crit:
+        diskInfo += "(!!)"
+        state = 2
+    elif diskUtil >= warn:
+        diskInfo += "(!)"
+        state = 1
+    else:
+        state = 0
+    states.append((state,diskInfo,("Disk (percentage)", diskUtil, warn, crit, 0, 100)))
+
+    logInfo = "Log: %2.1f%%" % logUtil
+    if logUtil >= crit:
+        logInfo += "(!!)"
+        state = 2
+    elif logUtil >= warn:
+        logInfo += "(!)"
+        state = 1
+    else:
+        state = 0
+    states.append((state,logInfo,("Log (percentage)", logUtil, warn, crit, 0, 100)))
+
+    worst_state = max([x[0] for x in states])
+    info_text = ", ".join([x[1] for x in states])
+    state_text = { 0:"OK", 1:"WARN", 2:"CRIT" }.get(worst_state)
+    return (worst_state, "%s - Usages: %s" % (state_text, info_text), [x[2] for x in states if x[2] != None])
+
+check_info["juniper_ive"] = {
+    "check_function"        : check_juniper_ive,
+    "inventory_function"    : inventory_juniper_ive,
+    "service_description"   : "Juniper IVE",
+    "has_perfdata"          : True,
+    "snmp_scan_function"    : lambda oid: "SA-2000" in oid(".1.3.6.1.4.1.12532.6.0"),
+    "snmp_info"             : ( ".1.3.6.1.4.1.12532", [ 10, 11, 25, 1 ] )
+}

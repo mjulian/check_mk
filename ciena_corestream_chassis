@@ -1,0 +1,30 @@
+#!/usr/bin/python
+
+# OIDs used:
+# MWMIB-MIB::nodeName      .1.3.6.1.4.1.1271.1.1.1.5
+# MWMIB-MIB::nodeTypeStr   .1.3.6.1.4.1.1271.1.1.1.23
+# MWMIB-MIB::nodeAddr      .1.3.6.1.4.1.1271.1.1.1.24
+# SNMPv2-MIB::sysDescr     .1.3.6.1.2.1.1.1.0
+
+# Scan function looks for 'Ciena Multiwave Nodal Control Processor' in sysDescr 
+# (this should only apply to Cisco Corestreams)
+
+# Author: Mike Julian - mike@mikejulian.com - http://mikejulian.com
+
+def inventory_ciena_corestream_chassis(info):
+    return [ (None, None) ]
+
+def check_ciena_corestream_chassis(item, _no_params, info):
+    nodeName = info[0][0]
+    nodeType = info[0][1]
+    nodeAddr = info[0][2]
+    return (0, "Node Name: %s, Node Type: %s, Node Address: %s" % (nodeName, nodeType, nodeAddr) )
+
+check_info["ciena_corestream_chassis"] = {
+    "check_function"        : check_ciena_corestream_chassis,
+    "inventory_function"    : inventory_ciena_corestream_chassis,
+    "service_description"   : "Ciena Node Info",
+    "has_perfdata"          : False,
+    "snmp_scan_function"    : lambda oid: "Ciena Multiwave Nodal Control Processor" in oid(".1.3.6.1.2.1.1.1.0"),
+    "snmp_info"             : ( ".1.3.6.1.4.1.1271.1.1.1", [ 5, 23, 24 ] )
+}

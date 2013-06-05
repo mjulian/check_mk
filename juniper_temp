@@ -1,0 +1,45 @@
+#!/usr/bin/python
+
+# OIDs used:
+# JUNIPER-MIB::jnxOperatingDescr    .1.3.6.1.4.1.2636.3.1.13.1.5
+# JUNIPER-MIB::jnxOperatingTemp     .1.3.6.1.4.1.2636.3.1.13.1.7
+# JUNIPER-MIB::jnxOperatingDescr    .1.3.6.1.4.1.2636.3.1.2.0
+
+# Scan function looks for 'Juniper' in jnxBoxDescr
+
+# Author: Mike Julian - mike@mikejulian.com - http://mikejulian.com
+
+juniper_temp_default_levels = (50,60)
+
+def inventory_juniper_temp(info):
+    frus = ['CB', 'Routing Engine', 'FPC', 'Bottom Tray Fan', 'Bottom Fan Tray', 'Top Tray Fan', 'Top Fan Tray', 'PEM']
+    inventory = []
+    for line in info:
+        # Exclude interface cards, as they have no temp sensors
+        for fru in frus:
+           if line[0].startswith(fru):
+                inventory.append((line[0], juniper_temp_default_levels))
+    return inventory
+
+def check_juniper_temp(item, params, info):
+    for descr, temp in info:
+        warn,crit = params
+        if item == descr:
+            temp = int(temp)
+            perfdata = [ ( "temp", temp) ]
+            if temp >= crit:
+                return (2, "CRIT - Temperature above threshold (%s): %sC" % (crit,temp), perfdata)
+            elif temp >= warn:
+                return (1, "WARN - Temperature above threshold (%s): %sC" % (warn,temp), perfdata)
+            else:
+                return (0, "OK - Temperature: %sC" % temp, perfdata)
+    return (3, "UNKNOWN")
+
+check_info["juniper_temp"] = {
+    "check_function"        : check_juniper_temp,
+    "inventory_function"    : inventory_juniper_temp,
+    "service_description"   : "Temp: %s",
+    "has_perfdata"          : True,
+    "snmp_scan_function"    : lambda oid: "Juniper" in oid(".1.3.6.1.4.1.2636.3.1.2.0"),
+    "snmp_info"             : ( ".1.3.6.1.4.1.2636.3.1.13.1", [5, 7]),
+}
