@@ -1,0 +1,40 @@
+#!/usr/bin/python
+
+# OIDs used:
+# DRAFT-MSDP-MIB::msdpPeerState.ipv4   .1.3.6.1.3.92.1.3.1.3.1   
+# DRAFT-MSDP-MIB::msdpEnabled.0        .1.3.6.1.3.92.1.1.1.0
+
+# Scan function looks for '1' (enabled) in msdpEnabled.0
+
+def inventory_msdp_peer(info):
+    inventory = []
+    for line in info:
+        inventory.append((line[0], None))
+    return inventory
+
+def check_msdp_peer(item, _no_params, info):
+    for msdpPeer, peerState in info:
+        if item == msdpPeer:
+            peerState = int(peerState)
+            if peerState == 1:
+                return (2, "CRIT - Peer state: inactive")
+            elif peerState == 2:
+                return (2, "CRIT - Peer state: listen")
+            elif peerState == 3:
+                return (2, "CRIT - Peer state: connecting")
+            elif peerState == 4:
+                return (0, "OK - Peer state: established")
+            elif peerState == 5:
+                return (1, "WARN - Peer state: disabled")
+            else:
+                return (3, "UNKNOWN - Peer state: unknown")
+    return (3, "UNKNOWN")
+
+check_info["msdp_peer"] = {
+    "check_function"        : check_msdp_peer,
+    "inventory_function"    : inventory_msdp_peer,
+    "service_description"   : "MSDP Peer: ",
+    "has_perfdata"          : False,
+    "snmp_scan_function"    : lambda oid: oid(".1.3.6.1.3.92.1.1.1.0") == "1",
+    "snmp_info"		        : ( ".1.3.6.1.3.92.1.3.1.3.1", [ OID_END, 4 ] ),
+}
